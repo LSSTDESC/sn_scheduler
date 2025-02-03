@@ -21,8 +21,8 @@ class StarAltTime:
     def __init__(self, site_name='Cerro Pachon'):
         """
         Class to estimate star alt vs altz
-        Code adapted from an example of
-        https://github.com/sylvielsstfr/AuxtelStarAlt
+        Code adapted from the example:
+        https://docs.astropy.org/en/stable/generated/examples/coordinates/plot_obs-planning.html
 
         Parameters
         ----------
@@ -338,7 +338,8 @@ class StarAltTime:
                 sel_time_mjd = obs_time_mjd[idx]
 
                 df_res = self.analyze_alt(sel_time, sel_time_mjd,
-                                          target.alt[idx], target.secz[idx],
+                                          target.alt[idx],
+                                          target.secz[idx],
                                           night_min, night_max)
 
                 df_res['target'] = self.all_target_names[i]
@@ -385,6 +386,30 @@ class StarAltTime:
 
     def analyze_alt(self, obs_time, obs_time_mjd, alt, airmass,
                     night_min, night_max):
+        """
+        Method to analyze a night
+
+        Parameters
+        ----------
+        obs_time : array
+            observing time.
+        obs_time_mjd : array
+            obbs time mjd.
+        alt : array
+            alt values.
+        airmass : array
+            airmass value.
+        night_min : float
+            night min.
+        night_max : float
+            night max.
+
+        Returns
+        -------
+        res : array
+            Result.
+
+        """
 
         obs_time_min, obs_time_max = np.min(
             obs_time/u.hour), np.max(obs_time/u.hour)
