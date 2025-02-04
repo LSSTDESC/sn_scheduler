@@ -267,7 +267,7 @@ class StarAltTime:
         self.moon_phase = pd.DataFrame(
             (self.times_evening_to_morning-self.utcoffset).mjd, columns=['mjd'])
         self.moon_phase['moon_phase'] = self.gbt.moon_phase(
-            self.times_evening_to_morning-1)/u.rad*180./np.pi
+            self.times_evening_to_morning-1)/u.rad*100./np.pi
 
     def target_frame(self, alt_min=20.):
         """
