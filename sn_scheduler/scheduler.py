@@ -10,6 +10,7 @@ import pytz
 import timezonefinder
 from datetime import datetime
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, Angle
+from astroplan import Observer
 from astropy.time import Time
 import astropy.units as u
 import numpy as np
@@ -35,7 +36,8 @@ class StarAltTime:
 
         """
 
-        self.timezone_str, self.site_location = self.time_zone(site_name)
+        self.timezone_str, self.site_location, self.gbt = self.time_zone(
+            site_name)
 
     def time_zone(self, site_name):
         """
@@ -68,7 +70,11 @@ class StarAltTime:
         timezone_str = tf.certain_timezone_at(
             lat=latitude.degree, lng=longitude.degree)
 
-        return timezone_str, site_location
+        # observer to estimate moon phases
+        gbt = Observer(location=site_location, elevation=altitude,
+                       name='gbt', timezone=timezone_str)
+
+        return timezone_str, site_location, gbt
 
     def target_location(self, targets=pd.DataFrame()):
         """
@@ -213,6 +219,7 @@ class StarAltTime:
         """
 
         midnight_utc = Time(night_obs_midnight_str) - self.utcoffset
+
         delta_midnight = np.linspace(-2, 10, 100)*u.hour
         self.frame_night = AltAz(obstime=midnight_utc +
                                  delta_midnight, location=self.site_location)
@@ -254,6 +261,13 @@ class StarAltTime:
             "moon", self.times_evening_to_morning)
         self.moonaltazs_evening_to_morning = moon_evening_to_morning.transform_to(
             self.frame_evening_to_morning)
+
+        # self.moon_phase = self.gbt.moon_phase(self.times_evening_to_morning)
+
+        self.moon_phase = pd.DataFrame(
+            (self.times_evening_to_morning-self.utcoffset).mjd, columns=['mjd'])
+        self.moon_phase['moon_phase'] = self.gbt.moon_phase(
+            self.times_evening_to_morning-1)/u.rad*180./np.pi
 
     def target_frame(self, alt_min=20.):
         """
@@ -311,13 +325,14 @@ class StarAltTime:
         tmid = self.delta_midnight/u.hour
 
         idx = tmid < 0
-        obs_time_neg = self.mjd-1+(tmid[idx]+24.)/24.-self.utcoffset/u.hour/24.
-        obs_time_pos = self.mjd+tmid[~idx]/24.-self.utcoffset/u.hour/24.
+        obs_time_neg = self.mjd+(tmid[idx]+24.)/24.-self.utcoffset/u.hour/24.
+        obs_time_pos = self.mjd+1+tmid[~idx]/24.-self.utcoffset/u.hour/24.
 
         obs_time_mjd = np.concatenate((obs_time_neg, obs_time_pos))
 
         obs_time_mjd.sort()
         obs_time_mjd = obs_time_mjd[idxb]
+
         # print('night mjd', np.min(obs_time_mjd), np.max(obs_time_mjd))
         ntargets = len(self.all_target_altazs_evening_to_morning)
 
@@ -336,7 +351,6 @@ class StarAltTime:
             if len(fi_sel) > 0:
                 sel_time = obs_time[idx]
                 sel_time_mjd = obs_time_mjd[idx]
-
                 df_res = self.analyze_alt(sel_time, sel_time_mjd,
                                           target.alt[idx],
                                           target.secz[idx],
@@ -348,6 +362,10 @@ class StarAltTime:
                 df_res['night_duration [h]'] = night_duration
                 df_res['obs_duration [h]'] = df_res['obs_duration_p1 [h]'] + \
                     df_res['obs_duration_p2 [h]']
+                df_res['moon_phase_min'] = df_res[[
+                    'moon_phase_min_p1', 'moon_phase_min_p2']].T.min()
+                df_res['moon_phase_max'] = df_res[[
+                    'moon_phase_max_p1', 'moon_phase_max_p2']].T.max()
                 df_res['year'] = self.year
                 df_res['month'] = self.month
                 df_res['day'] = self.day
@@ -433,6 +451,8 @@ class StarAltTime:
             ddict['alt_max_p{}'.format(pp)] = 0.
             ddict['mjd_airmass_min_p{}'.format(pp)] = 0.
             ddict['airmass_min_p{}'.format(pp)] = 0.
+            ddict['moon_phase_min_p{}'.format(pp)] = 1.
+            ddict['moon_phase_max_p{}'.format(pp)] = 0.
 
         for pp in np.unique(pers['period']):
             idx = pers['period'] == pp
@@ -444,6 +464,12 @@ class StarAltTime:
             """
             min_time = np.min(sel_per['mjd'])
             max_time = np.max(sel_per['mjd'])
+
+            # grab the moon phases
+            idxm = self.moon_phase['mjd'] >= min_time
+            idxm &= self.moon_phase['mjd'] <= max_time
+            sel_moon = self.moon_phase[idxm]
+
             ddict['mjd_per_min_p{}'.format(pp)] = min_time
             ddict['mjd_per_max_p{}'.format(pp)] = max_time
             idx = np.argmax(sel_per['alt'])
@@ -452,6 +478,10 @@ class StarAltTime:
             idx = np.argmin(sel_per['airmass'])
             ddict['mjd_airmass_min_p{}'.format(pp)] = sel_per[idx]['mjd']
             ddict['airmass_min_p{}'.format(pp)] = sel_per[idx]['airmass']
+            ddict['moon_phase_min_p{}'.format(
+                pp)] = sel_moon['moon_phase'].min()
+            ddict['moon_phase_max_p{}'.format(
+                pp)] = sel_moon['moon_phase'].max()
             """
             ddict['mjd_per_min_p{}'.format(pp)] = get_mjd(
                 self.year, self.month, self.day, min_time)
@@ -528,7 +558,7 @@ class StarAltTime:
             max_sec = int((midmax-max_h-max_min/60.)*3600.)
 
             t = Time(datetime(self.year, self.month, day,
-                     max_h, max_min, max_sec), scale='utc')
+                              max_h, max_min, max_sec), scale='utc')
 
             r.append((target, t.mjd, alt[idx], airmass[idx].value,
                      time_obs.mjd, alt[idxb], airmass[idxb].value))
@@ -826,7 +856,7 @@ def periods(obs, period_gap=0.1, colName='time_h'):
     period_gap: float, opt
        minimal gap required to define a period (default: 0.1 h)
     colName : str, optional
-        Name of the column to estimate the diff. 
+        Name of the column to estimate the diff.
         The default is 'time_h'.
     Returns
     ----------
