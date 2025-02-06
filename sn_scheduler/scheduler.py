@@ -928,7 +928,7 @@ def process_night(stars_alt, year, month, day, targets,
     alt_max = 86.5
     airmass_max = 2.5
 
-    targets_info = stars_alt.target_info(sun_alt_night=sun_alt_night,
+    targets_info = stars_alt.target_info(sun_alt_night=sun_alt_night*u.deg,
                                          star_alt_min=alt_min*u.deg,
                                          star_alt_max=alt_max*u.deg,
                                          star_airmass_max=airmass_max)
@@ -1084,7 +1084,11 @@ def process_target_multiproc(toproc, params, j=0, output_q=None):
     for vv in toproc:
         print(vv[0], vv[1])
         process_target(vv[0], vv[1], stars_alt,
-                       targets, plot_it=False, outDir=outDir)
+                       targets, plot_it=False, outDir=outDir,
+                       sun_alt_night=sun_alt_night,
+                       alt_min=alt_min,
+                       alt_max=alt_max,
+                       airmass_max=airmass_max)
 
     if output_q is not None:
         return output_q.put({j: [1]})
