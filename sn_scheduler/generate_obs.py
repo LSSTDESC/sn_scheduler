@@ -121,7 +121,8 @@ def process_target(target_sched, target_survey):
     """
 
     # grab seasons
-    seas = season(target_sched.to_records(index=False), mjdCol='mjd')
+    seas = season(target_sched.to_records(index=False),
+                  season_gap=20., mjdCol='mjd')
 
     target_sched = pd.DataFrame.from_records(seas)
 
