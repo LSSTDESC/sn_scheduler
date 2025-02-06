@@ -877,3 +877,191 @@ def periods(obs, period_gap=0.1, colName='time_h'):
 
     obs = rf.append_fields(obs, 'period', seasoncalc)
     return obs
+
+
+def process_night(stars_alt, year, month, day, targets, plot_it=False):
+    """
+
+
+    Parameters
+    ----------
+    stars_alt : TYPE
+        DESCRIPTION.
+    year : TYPE
+        DESCRIPTION.
+    month : TYPE
+        DESCRIPTION.
+    day : TYPE
+        DESCRIPTION.
+    targets : TYPE
+        DESCRIPTION.
+    plot_it : TYPE, optional
+        DESCRIPTION. The default is False.
+
+    Returns
+    -------
+    targets_info : TYPE
+        DESCRIPTION.
+
+    """
+    """
+    Function to process targets
+
+    Parameters
+    ----------
+    stars_alt : StarAltTime instance
+        The class where the calculation is made.
+    year : int
+        year of observation.
+    month : int
+        month of observation.
+    day : int
+        day of observation.
+    targets : pandas df
+        List of targets to process.
+    plot_it : bool, optional
+        To plot the results. The default is False.
+
+    Returns
+    -------
+    targets_info : pandas df
+        Targets with obs. info.
+
+    """
+
+    # grab the targets
+    stars_alt.target_location(targets=targets)
+
+    # get stars alt
+    stars_alt(year=year, month=month, day=day)
+
+    # grab star infos
+    alt_min = 25.
+    alt_max = 86.5
+    airmass_max = 2.5
+
+    targets_info = stars_alt.target_info(star_alt_min=alt_min*u.deg,
+                                         star_alt_max=alt_max*u.deg,
+                                         star_airmass_max=airmass_max)
+
+    """
+    print(targets_info.columns)
+    print(targets_info[['target', 'mjd', 'mjd_per_min_p1',
+          'mjd_per_max_p1', 'obs_duration [h]']])
+    """
+    # plot result here
+    if plot_it:
+        stars_alt.plot(star_alt_min=alt_min*u.deg,
+                       star_alt_max=alt_max*u.deg,
+                       star_airmass_max=airmass_max)
+        # stars_alt.plot_airmass()
+        stars_alt.plt.show()
+
+    return targets_info
+
+
+def process_mjd(stars_alt, mjd, targets, plot_it=False):
+    """
+    Function to process a night (mjd)
+
+    Parameters
+    ----------
+    stars_alt : StarAltTime class
+        instance of the StarAltTime used for calculations.
+    mjd : float
+        Modified Julian Date of the night to process.
+    targets : pandas df
+        List of targets to process.
+    plot_it : bool, optional
+        To plot the results. The default is False.
+
+    Returns
+    -------
+    rr : pandas df
+        Result of the night processing.
+
+    """
+
+    tm = Time('{}'.format(mjd), format='mjd')
+
+    print(tm.ymdhms, mjd)
+    year = tm.ymdhms[0]
+    month = tm.ymdhms[1]
+    day = tm.ymdhms[2]
+
+    rr = process_night(stars_alt, year, month, day, targets, plot_it=plot_it)
+
+    return rr
+
+
+def process(mjd_min, mjd_max, stars_alt, targets, plot_it=False, outDir=''):
+    """
+    Function to process data
+
+    Parameters
+    ----------
+    mjd_min : float
+        min Modified Julian Date.
+    mjd_max : float
+        max Modified Julian Date.
+    stars_alt : StarAltTime class
+        Instance of the StarAltTime class.
+    targets : pandas df
+        List of targets to process.
+    plot_it : bool, optional
+        To plot the results. The default is False.
+    outDir: str, optional.
+        Output dir. The default is ''
+
+    Returns
+    -------
+    None.
+
+    """
+
+    mjds = np.arange(mjd_min, mjd_max+1, 1)
+    res = pd.DataFrame()
+    for mjd in mjds:
+        rr = process_mjd(stars_alt, mjd, targets, plot_it=plot_it)
+        res = pd.concat((res, rr))
+
+    outName = '{}/ddf_scheduler_{}_{}.hdf5'.format(
+        outDir, int(mjd_min), int(mjd_max))
+
+    res.to_hdf(outName, key='schedule')
+
+
+def process_multiproc(toproc, params, j=0, output_q=None):
+    """
+    Function to process data using multiprocessing
+
+    Parameters
+    ----------
+    toproc : list((float,float))
+        list of mjds to process.
+    params : dict
+        parameters.
+    j : int, optional
+        internal int for multiproc. The default is 0.
+    output_q : multiprocessing queue, optional
+        Where to put the results. The default is None.
+
+    Returns
+    -------
+    int
+        output value.
+
+    """
+
+    stars_alt = params['star_alt']
+    targets = params['targets']
+    outDir = params['outDir']
+
+    for vv in toproc:
+        print(vv[0], vv[1])
+        process(vv[0], vv[1], stars_alt, targets, plot_it=False, outDir=outDir)
+
+    if output_q is not None:
+        return output_q.put({j: [1]})
+    else:
+        return [1]
