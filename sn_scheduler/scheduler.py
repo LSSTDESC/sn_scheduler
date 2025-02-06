@@ -879,31 +879,12 @@ def periods(obs, period_gap=0.1, colName='time_h'):
     return obs
 
 
-def process_night(stars_alt, year, month, day, targets, plot_it=False):
-    """
-
-
-    Parameters
-    ----------
-    stars_alt : TYPE
-        DESCRIPTION.
-    year : TYPE
-        DESCRIPTION.
-    month : TYPE
-        DESCRIPTION.
-    day : TYPE
-        DESCRIPTION.
-    targets : TYPE
-        DESCRIPTION.
-    plot_it : TYPE, optional
-        DESCRIPTION. The default is False.
-
-    Returns
-    -------
-    targets_info : TYPE
-        DESCRIPTION.
-
-    """
+def process_night(stars_alt, year, month, day, targets,
+                  plot_it=False,
+                  sun_alt_night=-18,
+                  alt_min=25.,
+                  alt_max=86.5,
+                  airmass_max=2.5):
     """
     Function to process targets
 
@@ -921,7 +902,14 @@ def process_night(stars_alt, year, month, day, targets, plot_it=False):
         List of targets to process.
     plot_it : bool, optional
         To plot the results. The default is False.
-
+    sun_alt_night : float, optional
+        max sun alt for a night to be defined. In degree. The default is -18.
+    alt_min : float, optional
+        min star alt. In degree. The default is 25.
+    alt_max : float, optional
+        max star alt. In degree. The default is 86.5.
+    airmass_max : float, optional
+        max airmass. The default is 2.5.
     Returns
     -------
     targets_info : pandas df
@@ -940,7 +928,8 @@ def process_night(stars_alt, year, month, day, targets, plot_it=False):
     alt_max = 86.5
     airmass_max = 2.5
 
-    targets_info = stars_alt.target_info(star_alt_min=alt_min*u.deg,
+    targets_info = stars_alt.target_info(sun_alt_night=sun_alt_night,
+                                         star_alt_min=alt_min*u.deg,
                                          star_alt_max=alt_max*u.deg,
                                          star_airmass_max=airmass_max)
 
@@ -960,7 +949,11 @@ def process_night(stars_alt, year, month, day, targets, plot_it=False):
     return targets_info
 
 
-def process_mjd(stars_alt, mjd, targets, plot_it=False):
+def process_mjd(stars_alt, mjd, targets, plot_it=False,
+                sun_alt_night=-18,
+                alt_min=25.,
+                alt_max=86.5,
+                airmass_max=2.5):
     """
     Function to process a night (mjd)
 
@@ -974,7 +967,14 @@ def process_mjd(stars_alt, mjd, targets, plot_it=False):
         List of targets to process.
     plot_it : bool, optional
         To plot the results. The default is False.
-
+    sun_alt_night : float, optional
+       max sun alt for a night to be defined. In degree. The default is -18.
+    alt_min : float, optional
+       min star alt. In degree. The default is 25.
+    alt_max : float, optional
+       max star alt. In degree. The default is 86.5.
+    airmass_max : float, optional
+       max airmass. The default is 2.5.
     Returns
     -------
     rr : pandas df
@@ -989,12 +989,21 @@ def process_mjd(stars_alt, mjd, targets, plot_it=False):
     month = tm.ymdhms[1]
     day = tm.ymdhms[2]
 
-    rr = process_night(stars_alt, year, month, day, targets, plot_it=plot_it)
+    rr = process_night(stars_alt, year, month, day, targets, plot_it=plot_it,
+                       sun_alt_night=sun_alt_night,
+                       alt_min=alt_min,
+                       alt_max=alt_max,
+                       airmass_max=airmass_max)
 
     return rr
 
 
-def process(mjd_min, mjd_max, stars_alt, targets, plot_it=False, outDir=''):
+def process_target(mjd_min, mjd_max, stars_alt, targets,
+                   plot_it=False, outDir='',
+                   sun_alt_night=-18,
+                   alt_min=25.,
+                   alt_max=86.5,
+                   airmass_max=2.5):
     """
     Function to process data
 
@@ -1012,7 +1021,14 @@ def process(mjd_min, mjd_max, stars_alt, targets, plot_it=False, outDir=''):
         To plot the results. The default is False.
     outDir: str, optional.
         Output dir. The default is ''
-
+    sun_alt_night : float, optional
+       max sun alt for a night to be defined. In degree. The default is -18.
+    alt_min : float, optional
+       min star alt. In degree. The default is 25.
+    alt_max : float, optional
+       max star alt. In degree. The default is 86.5.
+    airmass_max : float, optional
+       max airmass. The default is 2.5.
     Returns
     -------
     None.
@@ -1022,7 +1038,11 @@ def process(mjd_min, mjd_max, stars_alt, targets, plot_it=False, outDir=''):
     mjds = np.arange(mjd_min, mjd_max+1, 1)
     res = pd.DataFrame()
     for mjd in mjds:
-        rr = process_mjd(stars_alt, mjd, targets, plot_it=plot_it)
+        rr = process_mjd(stars_alt, mjd, targets, plot_it=plot_it,
+                         sun_alt_night=sun_alt_night,
+                         alt_min=alt_min,
+                         alt_max=alt_max,
+                         airmass_max=airmass_max)
         res = pd.concat((res, rr))
 
     outName = '{}/ddf_scheduler_{}_{}.hdf5'.format(
@@ -1031,7 +1051,7 @@ def process(mjd_min, mjd_max, stars_alt, targets, plot_it=False, outDir=''):
     res.to_hdf(outName, key='schedule')
 
 
-def process_multiproc(toproc, params, j=0, output_q=None):
+def process_target_multiproc(toproc, params, j=0, output_q=None):
     """
     Function to process data using multiprocessing
 
@@ -1056,10 +1076,15 @@ def process_multiproc(toproc, params, j=0, output_q=None):
     stars_alt = params['star_alt']
     targets = params['targets']
     outDir = params['outDir']
+    sun_alt_night = params['sun_alt_night']
+    alt_min = params['alt_min']
+    alt_max = params['alt_max']
+    airmass_max = params['airmass_max']
 
     for vv in toproc:
         print(vv[0], vv[1])
-        process(vv[0], vv[1], stars_alt, targets, plot_it=False, outDir=outDir)
+        process_target(vv[0], vv[1], stars_alt,
+                       targets, plot_it=False, outDir=outDir)
 
     if output_q is not None:
         return output_q.put({j: [1]})
