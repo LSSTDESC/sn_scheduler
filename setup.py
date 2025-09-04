@@ -18,5 +18,6 @@ setup(
     # All files from folder sn_script_input
     # package_data={'sn_script_input': ['*.txt']},
     python_requires='>=3.5',
-    zip_safe=False
+    zip_safe=False,
+    install_requires=['timezonefinder>=1.0'],
 )
