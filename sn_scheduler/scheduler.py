@@ -574,7 +574,10 @@ class StarAltTime:
              star_alt_min=20.*u.deg,
              star_alt_max=86.5*u.deg,
              star_airmass_max=2.5,
-             time_obs=None):
+             hour_min=-12,
+             hour_max=12,
+             time_obs=None,
+             fig=None, ax=None, show_selected_obs=False):
         """
         Method to plot the result: alt vs time
 
@@ -590,7 +593,8 @@ class StarAltTime:
         plt = self.plt
 
         # plots
-        fig, ax = plt.subplots(figsize=(16, 8))
+        if fig is None:
+            fig, ax = plt.subplots(figsize=(16, 8))
 
         # draw the Sun and the Moon
         ax.plot(self.delta_midnight, self.sunaltazs_evening_to_morning.alt,
@@ -622,26 +626,31 @@ class StarAltTime:
                     self.all_target_altazs_evening_to_morning[idx].alt,
                     label=self.all_target_names[idx], lw=2)
 
-            # select target with spec
-            target = self.all_target_altazs_evening_to_morning[idx][idxb]
-            # alt min and max selection
-            alt = Angle(target.alt)
-            idxc = alt >= star_alt_min
-            idxc &= alt <= star_alt_max
-            # airmass selection
-            idxc &= target.secz <= star_airmass_max
-            ax.plot(self.delta_midnight[idxb][idxc],
-                    target[idxc].alt, linestyle='None', marker='*')
+            if show_selected_obs:
+                # select target with spec
+                target = self.all_target_altazs_evening_to_morning[idx][idxb]
+                # alt min and max selection
+                alt = Angle(target.alt)
+                idxc = alt >= star_alt_min
+                idxc &= alt <= star_alt_max
+                # airmass selection
+                idxc &= target.secz <= star_airmass_max
+                ax.plot(self.delta_midnight[idxb][idxc],
+                        target[idxc].alt, linestyle='None', marker='*')
 
         # indicate time_obs (if any)
         if time_obs is not None:
+            time_obs += self.utcoffset
             tag_obs = time_obs.ymdhms[3]+time_obs.ymdhms[4]/60.
+            """
             if tag_obs > 12:
                 tag_obs -= 24.
-            ax.plot([tag_obs]*2, [0., 90.], color='w', lw=3)
+            """
+            print('tag_obs', tag_obs)
+            ax.plot([tag_obs]*2, [0., 90.], color='yellow', lw=3)
 
         # plt.legend(loc='upper left')
-        ax.legend(fontsize=12)
+        # ax.legend(fontsize=12)
         ax.set_xlim(-12*u.hour, 12*u.hour)
         ax.set_xticks((np.arange(13)*2-12)*u.hour)
         ax.set_ylim(0*u.deg, 90*u.deg)
@@ -649,7 +658,16 @@ class StarAltTime:
         ax.set_ylabel('Altitude [deg]')
         title = "observations at Cerro Pachon - night " + \
             self.night_obs_str.split(" ")[0]
-        fig.suptitle(title)
+        ax.set_title(title, fontsize=10)
+        ax.set_xlim(hour_min*u.hour, hour_max*u.hour)
+        handles, labels = ax.get_legend_handles_labels()
+        lgd = ax.legend(handles, labels, loc='upper right',
+                        bbox_to_anchor=(1.3, 0.9), fontsize=10,
+                        frameon=False)
+        """
+        ax.legend(loc='upper left', bbox_to_anchor=(1.0, 0.5),
+                  ncol=1, frameon=False)
+        """
         if plotName != '':
             plt.savefig(plotName)
 
@@ -727,7 +745,8 @@ class StarAltTime:
         plt.style.use(astropy_mpl_style)
         quantity_support()
 
-        plt.rcParams["axes.labelsize"] = "large"
+        plt.rcParams["axes.labelsize"] = "medium"
+        plt.rcParams["axes.labelweight"] = "bold"
         plt.rcParams["axes.linewidth"] = 2.0
         plt.rcParams["xtick.major.size"] = 8
         plt.rcParams["ytick.major.size"] = 8
@@ -736,7 +755,7 @@ class StarAltTime:
         plt.rcParams["ytick.labelsize"] = "large"
 
         plt.rcParams["figure.figsize"] = (12, 8)
-        plt.rcParams['axes.titlesize'] = 16
+        plt.rcParams['axes.titlesize'] = 10
         plt.rcParams['axes.titleweight'] = 'bold'
         # plt.rcParams['axes.facecolor'] = 'blue'
         plt.rcParams['xtick.direction'] = 'out'
@@ -760,13 +779,13 @@ def get_mjd(year, month, day, time_h):
 
     Parameters
     ----------
-    year : int
+    year: int
         year of observation.
-    month : int
+    month: int
         month of observation.
-    day : int
+    day: int
         day of observation.
-    time_h : float
+    time_h: float
         local time of observation.
 
     Returns
@@ -792,16 +811,16 @@ def get_hms(time_h):
 
     Parameters
     ----------
-    time_h : float
+    time_h: float
         time in hour.
 
     Returns
     -------
-    th : int
+    th: int
         hour.
-    tm : int
+    tm: int
         minutes.
-    ts : float
+    ts: float
         seconds.
 
     """
@@ -819,22 +838,21 @@ def findIntersection(fun1, fun2, x0, xmin, xmax):
 
     Parameters
     ----------
-    fun1 : function
+    fun1: function
         First function.
-    fun2 : function
+    fun2: function
         Second function.
-    x0 : float
+    x0: float
         X value for the first iteration.
-    xmin : float
+    xmin: float
         min x bound value.
-    xmax : float
+    xmax: float
         max x bound value.
-
 
     Returns
     -------
     float
-        The solution (None if no solution found in [xmin,xmax]).
+        The solution(None if no solution found in [xmin, xmax]).
 
     """
     xsol = fsolve(lambda x: fun1(x) - fun2(x), x0)
@@ -854,8 +872,8 @@ def periods(obs, period_gap=0.1, colName='time_h'):
     obs: numpy array
       array of observations
     period_gap: float, opt
-       minimal gap required to define a period (default: 0.1 h)
-    colName : str, optional
+       minimal gap required to define a period(default: 0.1 h)
+    colName: str, optional
         Name of the column to estimate the diff.
         The default is 'time_h'.
     Returns
@@ -890,29 +908,29 @@ def process_night(stars_alt, year, month, day, targets,
 
     Parameters
     ----------
-    stars_alt : StarAltTime instance
+    stars_alt: StarAltTime instance
         The class where the calculation is made.
-    year : int
+    year: int
         year of observation.
-    month : int
+    month: int
         month of observation.
-    day : int
+    day: int
         day of observation.
-    targets : pandas df
+    targets: pandas df
         List of targets to process.
-    plot_it : bool, optional
+    plot_it: bool, optional
         To plot the results. The default is False.
-    sun_alt_night : float, optional
+    sun_alt_night: float, optional
         max sun alt for a night to be defined. In degree. The default is -18.
-    alt_min : float, optional
+    alt_min: float, optional
         min star alt. In degree. The default is 25.
-    alt_max : float, optional
+    alt_max: float, optional
         max star alt. In degree. The default is 86.5.
-    airmass_max : float, optional
+    airmass_max: float, optional
         max airmass. The default is 2.5.
     Returns
     -------
-    targets_info : pandas df
+    targets_info: pandas df
         Targets with obs. info.
 
     """
@@ -955,29 +973,29 @@ def process_mjd(stars_alt, mjd, targets, plot_it=False,
                 alt_max=86.5,
                 airmass_max=2.5):
     """
-    Function to process a night (mjd)
+    Function to process a night(mjd)
 
     Parameters
     ----------
-    stars_alt : StarAltTime class
+    stars_alt: StarAltTime class
         instance of the StarAltTime used for calculations.
-    mjd : float
+    mjd: float
         Modified Julian Date of the night to process.
-    targets : pandas df
+    targets: pandas df
         List of targets to process.
-    plot_it : bool, optional
+    plot_it: bool, optional
         To plot the results. The default is False.
-    sun_alt_night : float, optional
+    sun_alt_night: float, optional
        max sun alt for a night to be defined. In degree. The default is -18.
-    alt_min : float, optional
+    alt_min: float, optional
        min star alt. In degree. The default is 25.
-    alt_max : float, optional
+    alt_max: float, optional
        max star alt. In degree. The default is 86.5.
-    airmass_max : float, optional
+    airmass_max: float, optional
        max airmass. The default is 2.5.
     Returns
     -------
-    rr : pandas df
+    rr: pandas df
         Result of the night processing.
 
     """
@@ -1009,25 +1027,25 @@ def process_target(mjd_min, mjd_max, stars_alt, targets,
 
     Parameters
     ----------
-    mjd_min : float
+    mjd_min: float
         min Modified Julian Date.
-    mjd_max : float
+    mjd_max: float
         max Modified Julian Date.
-    stars_alt : StarAltTime class
-        Instance of the StarAltTime class.
-    targets : pandas df
+    stars_alt: StarAltTime class
+        Instance of the StarAltTime class .
+    targets: pandas df
         List of targets to process.
-    plot_it : bool, optional
+    plot_it: bool, optional
         To plot the results. The default is False.
     outDir: str, optional.
         Output dir. The default is ''
-    sun_alt_night : float, optional
+    sun_alt_night: float, optional
        max sun alt for a night to be defined. In degree. The default is -18.
-    alt_min : float, optional
+    alt_min: float, optional
        min star alt. In degree. The default is 25.
-    alt_max : float, optional
+    alt_max: float, optional
        max star alt. In degree. The default is 86.5.
-    airmass_max : float, optional
+    airmass_max: float, optional
        max airmass. The default is 2.5.
     Returns
     -------
@@ -1057,13 +1075,13 @@ def process_target_multiproc(toproc, params, j=0, output_q=None):
 
     Parameters
     ----------
-    toproc : list((float,float))
+    toproc: list((float, float))
         list of mjds to process.
-    params : dict
+    params: dict
         parameters.
-    j : int, optional
+    j: int, optional
         internal int for multiproc. The default is 0.
-    output_q : multiprocessing queue, optional
+    output_q: multiprocessing queue, optional
         Where to put the results. The default is None.
 
     Returns
