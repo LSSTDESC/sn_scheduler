@@ -577,7 +577,7 @@ class StarAltTime:
              hour_min=-12,
              hour_max=12,
              time_obs=None,
-             fig=None, ax=None, show_selected_obs=False):
+             fig=None, ax=None, show_selected_obs=False, myplt=None):
         """
         Method to plot the result: alt vs time
 
@@ -587,14 +587,22 @@ class StarAltTime:
 
         """
 
+        pplt = myplt
+        if myplt is None:
+            print('activating plt')
+            self.activate_plot()
+            pplt = self.plt
+
+        """
         if 'plt' not in self.__dict__.keys():
             self.activate_plot()
 
         plt = self.plt
+        """
 
         # plots
         if fig is None:
-            fig, ax = plt.subplots(figsize=(16, 8))
+            fig, ax = pplt.subplots(figsize=(16, 8))
 
         # draw the Sun and the Moon
         ax.plot(self.delta_midnight, self.sunaltazs_evening_to_morning.alt,
@@ -662,14 +670,14 @@ class StarAltTime:
         ax.set_xlim(hour_min*u.hour, hour_max*u.hour)
         handles, labels = ax.get_legend_handles_labels()
         lgd = ax.legend(handles, labels, loc='upper right',
-                        bbox_to_anchor=(1.3, 0.9), fontsize=10,
+                        bbox_to_anchor=(1.3, 0.9), fontsize=8,
                         frameon=False)
         """
         ax.legend(loc='upper left', bbox_to_anchor=(1.0, 0.5),
                   ncol=1, frameon=False)
         """
         if plotName != '':
-            plt.savefig(plotName)
+            pplt.savefig(plotName)
 
     def plot_airmass(self, plotName='', time_obs=None):
         """
@@ -754,7 +762,7 @@ class StarAltTime:
         plt.rcParams["xtick.labelsize"] = "large"
         plt.rcParams["ytick.labelsize"] = "large"
 
-        plt.rcParams["figure.figsize"] = (12, 8)
+        # plt.rcParams["figure.figsize"] = (12, 8)
         plt.rcParams['axes.titlesize'] = 10
         plt.rcParams['axes.titleweight'] = 'bold'
         # plt.rcParams['axes.facecolor'] = 'blue'
