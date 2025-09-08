@@ -14,7 +14,7 @@ setup(
     author='Philippe Gris',
     author_email='philippe.gris@clermont.in2p3.fr',
     license='BSD',
-    packages=['sn_scheduler'],
+    packages=['sn_scheduler', 'sn_holo_survey'],
     # All files from folder sn_script_input
     # package_data={'sn_script_input': ['*.txt']},
     python_requires='>=3.5',
