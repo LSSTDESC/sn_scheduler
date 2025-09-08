@@ -21,7 +21,7 @@ class HoloSurvey:
                  fp_level,
                  targetDir, targetFile,
                  dbDir, dbName, nproc=8,
-                 show_Plot=False, outFigDir=''):
+                 show_Plot=False, outFigDir='', running_mode='mean_pointings'):
         """
         class to build a Holospec (AuxTel) survey
 
@@ -55,6 +55,7 @@ class HoloSurvey:
         self.nside = nside
         self.nproc = nproc
         self.show_Plot = show_Plot
+        self.running_mode = running_mode
 
         # StarAltTime instance
         self.stars_alt = StarAltTime()
@@ -130,20 +131,107 @@ class HoloSurvey:
             if sel_dd is None:
                 continue
 
-            # loop on obs and grab nearest targets
-            for dd in sel_dd:
-                sel_targets, ppixels = self.process_obs(dd)
-                sel_targets['night'] = night
-                res = pd.concat((res, sel_targets))
-                if self.show_Plot:
-                    plot_mjd(dd, self.nside,
-                             ppixels, self.target_pixels,
-                             self.stars_alt, sel_targets)
+            print('processing night', night)
+            if self.running_mode == 'all_pointings':
+                rb = self.loop_all_pointings(night, sel_dd)
+
+            if self.running_mode == 'mean_pointings':
+                rb = self.loop_mean_pointings(night, sel_dd)
+
+            res = pd.concat((res, rb))
 
         if output_q is not None:
             return output_q.put({j: res})
         else:
             return res
+
+    def loop_all_pointings(self, night, sel_dd):
+        """
+        Method to loop on all pointings to grab nearest targets (very slow)
+
+        Parameters
+        ----------
+        night : int
+            night number.
+        sel_dd : numpy array
+            observations.
+
+        Returns
+        -------
+        res : pandas df
+            nearest pointings.
+
+        """
+
+        res = pd.DataFrame()
+        # loop on obs and grab nearest targets
+        for dd in sel_dd:
+            sel_targets, ppixels = self.process_obs(dd)
+            sel_targets['night'] = night
+            res = pd.concat((res, sel_targets))
+            if self.show_Plot:
+                plot_mjd(dd, self.nside,
+                         ppixels, self.target_pixels,
+                         self.stars_alt, sel_targets)
+
+        return res
+
+    def loop_mean_pointings(self, night, sel_dd):
+        """
+        Method to loop on all pointings to grab nearest targets (very slow)
+
+        Parameters
+        ----------
+        night : int
+            night number.
+        sel_dd : numpy array
+            observations.
+
+        Returns
+        -------
+        res : pandas df
+            nearest pointings.
+
+        """
+
+        res = pd.DataFrame()
+
+        # grab means
+        fields = np.unique(sel_dd['target_name'])
+
+        rr = []
+        for field in fields:
+            idx = sel_dd['target_name'] == field
+            selb = sel_dd[idx]
+            bands = np.unique(selb['filter'])
+            for b in bands:
+                idxb = selb['filter'] == b
+                selc = selb[idxb]
+                obsid = selc['observationId'].mean()
+                ra = selc['RA'].mean()
+                dec = selc['Dec'].mean()
+                night = selc['night'].mean()
+                mjd = selc['mjd'].mean()
+                rotSkyPos = selc['rotSkyPos'].mean()
+                r = (obsid, field, ra, dec, night, mjd, b, rotSkyPos)
+                rr.append(r)
+
+        sel_dd_mean = np.rec.fromrecords(
+            rr, names=['observationId', 'target_name', 'RA', 'Dec',
+                       'night', 'mjd', 'filter', 'rotSkyPos'])
+
+        # loop on obs and grab nearest targets
+        for dd in sel_dd_mean:
+            sel_targets, ppixels = self.process_obs(dd)
+            sel_targets['night'] = night
+            sel_targets['filter'] = dd['filter']
+            res = pd.concat((res, sel_targets))
+            if self.show_Plot:
+                plot_mjd(dd, self.nside,
+                         ppixels, self.target_pixels,
+                         self.stars_alt, sel_targets)
+
+        return res
 
     def load_obs(self, dbDir, dbName):
         """
@@ -166,10 +254,12 @@ class HoloSurvey:
 
         self.obs = np.load(fName)
 
+        """
         idx = self.obs['night'] <= 365
         self.obs = self.obs[idx]
+        """
 
-        self.nnights = self.obs['night'].tolist()
+        self.nnights = np.unique(self.obs['night']).tolist()
 
     def load_targets(self, targetDir, targetFile):
         """
