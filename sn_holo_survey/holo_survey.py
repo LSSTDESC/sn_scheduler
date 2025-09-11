@@ -66,6 +66,9 @@ class HoloSurvey:
         # load targets
         self.targets = self.load_targets(targetDir, targetFile)
 
+        if 'sp_type' not in self.targets.columns:
+            self.add_spectral_type()
+
         # target-> pixel
         self.target_pixels = self.target_to_pixel()
 
@@ -446,6 +449,29 @@ class HoloSurvey:
         del res
         return sel_targets
 
+    def add_spectral_type(self):
+        """
+        Method to add the spectral type to Gaia stars
+
+        Returns
+        -------
+        None.
+
+        """
+
+        tt = self.targets['source_id'].to_list()
+
+        rt = query_simbad(tt)
+
+        rt = rt[['GAIA_DR3_name', 'sp_type']]
+
+        rt = rt.rename(columns={'GAIA_DR3_name': 'source_id'})
+
+        self.targets = self.targets.merge(rt,
+                                          left_on=['source_id'],
+                                          right_on=['source_id'],
+                                          suffixes=['', ''])
+
 
 def min_dist_source(grp):
     """
@@ -466,3 +492,42 @@ def min_dist_source(grp):
     grp = grp.sort_values(by=['dist'])
 
     return pd.DataFrame(grp[:1])
+
+
+def query_simbad(llist, search_what='Gaia DR3'):
+    """
+    Function to grab the spectral type of Gaia stars
+
+    Parameters
+    ----------
+    llist : list(int)
+        list of Gaia IDs.
+    search_what : str, optional
+        ID type. The default is 'Gaia DR3'.
+
+    Returns
+    -------
+    pandas df
+        output data.
+
+    """
+    from astroquery.simbad import Simbad
+    r = []
+    simbad = Simbad()
+    simbad.add_votable_fields("sp_type")
+    for tt in llist:
+        target = '{} {}'.format(search_what, tt)
+        tab = simbad.query_objectids(target)
+        vv = -1
+        spType = 'unknown'
+        tab.convert_bytestring_to_unicode()
+        df = tab.to_pandas()
+        idx = list(map(lambda x: x.startswith(search_what), df['id']))
+        sel = df[idx]
+        if len(sel) == 1:
+            vv = sel['id'].values[0].split('{} '.format(search_what))[-1]
+            tab = simbad.query_object(target).to_pandas()
+            vv = int(vv)
+            spType = tab['sp_type'].values[0]
+        r.append((target, vv, spType))
+    return pd.DataFrame(r, columns=['target', 'GAIA_DR3_name', 'sp_type'])

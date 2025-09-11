@@ -314,7 +314,7 @@ def plot_mjd(dd, nside,
 
     targets_nearest = targets_nearest.sort_values(by=['dist'])
 
-    tp = ['source_id', 'ra', 'dec', 'g_mag', 'var_flag']
+    tp = ['source_id', 'ra', 'dec', 'g_mag', 'var_flag', 'sp_type']
 
     axc = ax[1][1]
 
@@ -329,7 +329,7 @@ def plot_mjd(dd, nside,
     # rr = rr.set_index('source_id')
     table = pd.plotting.table(axc, rr,
                               loc='center', cellLoc='center',
-                              colWidths=[0.35]+[0.1]*4)
+                              colWidths=[0.35]+[0.1]*5)
     table.auto_set_font_size(False)
     table.set_fontsize(10)
     table.scale(1.8, 1.8)
