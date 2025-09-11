@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "sn_scheduler"
 version="1.0.0"
 requires-python = ">=3.5"
-dependencies = ['timezonefinder>=1.0','astropy_healpix']
+dependencies = ['timezonefinder>=1.0','astropy_healpix','astroquery']
 authors = [
   {name = "Philippe Gris", email = "philippe.gris@clermont.in2p3.fr"},
 ]
