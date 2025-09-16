@@ -321,7 +321,9 @@ def plot_mjd(dd, nside,
     axc.axis('off')
 
     rr = pd.DataFrame(targets_nearest[tp])
+    rr= rr.round({'ra': 2, 'dec': 2, 'g_mag': 2})
     rr['g_mag'] = rr['g_mag'].astype(str)
+    #rr = rr.drop_duplicates(subset='source_id')
     print(rr)
     # rr.style.hide(axis='index')
     # rr = rr.reset_index()

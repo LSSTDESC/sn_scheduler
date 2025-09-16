@@ -290,7 +290,7 @@ class HoloSurvey:
             columns={'phot_g_mean_mag': 'g_mag',
                      'phot_variable_flag': 'var_flag'})
 
-        targets = targets.round({'ra': 2, 'dec': 2, 'g_mag': 2})
+        targets = targets.round({'ra': 6, 'dec': 6, 'g_mag': 3})
         targets['var_flag'] = targets['var_flag'].str.replace(
             'NOT_AVAILABLE', 'NA')
 
@@ -390,6 +390,8 @@ class HoloSurvey:
 
         targets_nearest['mjd'] = mjd
         targets_nearest['field'] = field
+
+        targets_nearest = targets_nearest.drop_duplicates(subset='source_id')
 
         return targets_nearest, ppixels
 
@@ -530,4 +532,7 @@ def query_simbad(llist, search_what='Gaia DR3'):
             vv = int(vv)
             spType = tab['sp_type'].values[0]
         r.append((target, vv, spType))
-    return pd.DataFrame(r, columns=['target', 'GAIA_DR3_name', 'sp_type'])
+        
+    res = pd.DataFrame(r, columns=['target', 'GAIA_DR3_name', 'sp_type'])
+    
+    return res
