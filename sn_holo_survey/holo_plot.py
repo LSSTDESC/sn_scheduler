@@ -204,7 +204,7 @@ def plot_flat(pixels_FP, target_pixels, ra, dec,
     ax.plot(pixels_FP['pixRA'], pixels_FP['pixDec'], marker='o', color='r',
             mfc='None', linestyle='None', label='VRO FP')
     ax.plot(target_pixels['pixRA'],
-            target_pixels['pixDec'], 'b*', label='target')
+            target_pixels['pixDec'], 'b*', label='Gaia target')
 
     ax.set_xlim([ra-width_ra, ra+width_ra])
 
@@ -254,7 +254,7 @@ def get_date(mjd):
 
 def plot_mjd(dd, nside,
              ppixels, target_pixels, stars_alt, targets_nearest,
-             outDir='', outName=''):
+             outDir='', outName='gaia_os'):
     """
     Function to make a set of plots at mjd
 
@@ -321,9 +321,9 @@ def plot_mjd(dd, nside,
     axc.axis('off')
 
     rr = pd.DataFrame(targets_nearest[tp])
-    rr= rr.round({'ra': 2, 'dec': 2, 'g_mag': 2})
+    rr = rr.round({'ra': 2, 'dec': 2, 'g_mag': 2})
     rr['g_mag'] = rr['g_mag'].astype(str)
-    #rr = rr.drop_duplicates(subset='source_id')
+    # rr = rr.drop_duplicates(subset='source_id')
     print(rr)
     # rr.style.hide(axis='index')
     # rr = rr.reset_index()
@@ -342,7 +342,14 @@ def plot_mjd(dd, nside,
     """
     # plt.tight_layout()
 
-    if outDir == '':
+    if outDir == 'None':
         plt.show()
     else:
-        fName = '{}/{}.png'.format(outDir, outName)
+        import glob
+        tName = '{}/{}_*.png'.format(outDir, outName)
+        fis = glob.glob(tName)
+        nfi = len(fis)
+
+        nfi += 1
+        fName = '{}/{}_{:03d}.png'.format(outDir, outName, nfi)
+        plt.savefig(fName)

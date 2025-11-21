@@ -56,6 +56,7 @@ class HoloSurvey:
         self.nproc = nproc
         self.show_Plot = show_Plot
         self.running_mode = running_mode
+        self.outFigDir = outFigDir
 
         # StarAltTime instance
         self.stars_alt = StarAltTime()
@@ -175,7 +176,7 @@ class HoloSurvey:
             if self.show_Plot:
                 plot_mjd(dd, self.nside,
                          ppixels, self.target_pixels,
-                         self.stars_alt, sel_targets)
+                         self.stars_alt, sel_targets, outDir=self.outFigDir)
 
         return res
 
@@ -232,7 +233,7 @@ class HoloSurvey:
             if self.show_Plot:
                 plot_mjd(dd, self.nside,
                          ppixels, self.target_pixels,
-                         self.stars_alt, sel_targets)
+                         self.stars_alt, sel_targets, outDir=self.outFigDir)
 
         return res
 
@@ -532,7 +533,7 @@ def query_simbad(llist, search_what='Gaia DR3'):
             vv = int(vv)
             spType = tab['sp_type'].values[0]
         r.append((target, vv, spType))
-        
+
     res = pd.DataFrame(r, columns=['target', 'GAIA_DR3_name', 'sp_type'])
-    
+
     return res
