@@ -168,8 +168,8 @@ def plot_star_alt(stars_alt, mjd, targets, fig, ax, plt=None):
 
 
 def plot_flat(pixels_FP, target_pixels, ra, dec,
-              width_ra=3.,
-              width_dec=3., fig=None, ax=None):
+              width_ra=7.,
+              width_dec=7., fig=None, ax=None):
     """
     Function to plot pixels FP and pixels target
 
