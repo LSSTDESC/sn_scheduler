@@ -295,6 +295,11 @@ class HoloSurvey:
         targets['var_flag'] = targets['var_flag'].str.replace(
             'NOT_AVAILABLE', 'NA')
 
+        # remove variable targets
+        idx = targets['var_flag'] != 'VARIABLE'
+
+        targets = pd.DataFrame(targets[idx])
+
         return targets
 
     def target_to_pixel(self):
